@@ -1,21 +1,36 @@
+import os
+import torch
+from torch_geometric.datasets import TUDataset
+from torch_geometric.loader import DataLoader
 from torch.nn import Linear
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv
 from torch_geometric.nn import global_mean_pool
-import torch
+
+dataset = TUDataset(root='data/TUDataset', name='MUTAG')
+data = dataset[0]
+
+torch.manual_seed(12345)
+dataset = dataset.shuffle()
+
+train_dataset = dataset[:150]
+test_dataset = dataset[150:]
+
+train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
+test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False)
 
 
 class GCN(torch.nn.Module):
     def __init__(self, hidden_channels):
         super(GCN, self).__init__()
         torch.manual_seed(12345)
-        self.conv1 = GCNConv(28*28, hidden_channels)
+        self.conv1 = GCNConv(dataset.num_node_features, hidden_channels)
         self.conv2 = GCNConv(hidden_channels, hidden_channels)
         self.conv3 = GCNConv(hidden_channels, hidden_channels)
-        self.lin = Linear(hidden_channels, 2)
+        self.lin = Linear(hidden_channels, dataset.num_classes)
 
     def forward(self, x, edge_index, batch):
-        # 1. Obtain node embeddings 
+        # 1. Obtain node embeddings
         x = self.conv1(x, edge_index)
         x = x.relu()
         x = self.conv2(x, edge_index)
@@ -35,12 +50,13 @@ class GCN(torch.nn.Module):
 model = GCN(hidden_channels=64)
 print(model)
 
+from IPython.display import Javascript
+
+display(Javascript('''google.colab.output.setIframeHeight(0, true, {maxHeight: 300})'''))
+
 model = GCN(hidden_channels=64)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 criterion = torch.nn.CrossEntropyLoss()
-
-train_loader = [] #DataLoader(train_dataset, batch_size=64, shuffle=True)
-test_loader = [] #DataLoader(test_dataset, batch_size=64, shuffle=False)
 
 
 def train():
