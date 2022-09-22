@@ -86,3 +86,5 @@ for epoch in range(1, 171):
     train_acc = test(train_loader)
     test_acc = test(test_loader)
     print(f'Epoch: {epoch:03d}, Train Acc: {train_acc:.4f}, Test Acc: {test_acc:.4f}')
+
+torch.save(model.state_dict(), "actual_model.h")
