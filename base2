@@ -1,0 +1,68 @@
+import math
+import random
+import numpy as np
+import torch.nn as nn
+import torch.nn.functional as F
+import pandas as pd
+import torch
+from sklearn import *
+
+labels = pd.read_csv("FINAL_TARGETS_DATES_TRAINTEST.tsv", delimiter='\t')
+labels_test = labels.loc[labels['TARGET'] == 'test']
+labels = labels.loc[labels['TARGET'] != 'test']
+clients = pd.read_csv("FINAL_FEATURES_TRAINTEST.tsv", delimiter='\t')
+clients = clients.merge(labels, how="right")
+clients.pop("RETRO_DT")
+clients.pop("CLIENT_ID")
+clients = clients[['u8=9', 'u5=4', 'u8=0', 'u2=99', 'u6=1', 'u7=7.5', 'i1741', 'i574', 'i1673', 'u2=18', 'u3=8', 'u4=3', 'u5=8', 'u6=2', 'u1=16', 'u7=1.99', 'u5=10', 'i846', 'i876', 'i873', 'i4494', 'i702', 'u2=14', 'i4468', 'u6=0', 'i615', 'i720', 'u2=65', 'u7=0.99', 'i715', 'i653', 'i596', 'u4=2', 'i892', 'u1=99', 'u7=1.49', 'u2=53', 'u1=100', 'i1355', 'i687', 'i4518', 'i3348', 'i678', 'i745', 'u7=2.98', 'i592', 'i453', 'i1048', 'i3514', 'u0=25', 'u2=55', 'u2=32', 'u2=13', 'u0=218', 'u2=75', 'i1666', 'u1=161', 'u2=88', 'i487', 'i3246', 'i1747', 'i716', 'i1393', 'u3=6', 'i1463', 'u2=4', 'i1079', 'i590', 'i4400', 'i839', 'u0=126', 'u1=186', 'i767', 'i4290', 'i598', 'i1214', 'i1225', 'i832', 'i1060', 'i4292', 'u1=373', 'i830', 'i589', 'i646', 'i3350', 'i612', 'i4490', 'i1585', 'i3272', 'i768', 'i1746', 'i1097', 'i593', 'i681', 'i714', 'i520', 'i726', 'i1270', 'i3356', 'i676', 'i3044', 'i860', 'i883', 'i750', 'i760', 'u2=74', 'i765', 'i4500', 'i1147', 'i4510', 'u1=371', 'i1139', 'i3274', 'i1431', 'i4372', 'i762', 'i1449', 'i757', 'i3324', 'i2540', 'i2250', 'i746', 'u2=60', 'i770', 'i1658', 'i594', 'i1130', 'i4358', 'i3282', 'i688', 'u7=1.24', 'u2=82', 'i682', 'i680', 'i831', 'i1411', 'i717', 'i595', 'i1457', 'i769', 'i490', 'u2=73', 'i766', 'i1665', 'i670', 'i1246', 'i3262', 'i748', 'u2=59', 'u2=63', 'i924', 'i4398', 'i4332', 'i4516', 'u0=123', 'i491', 'i591', 'i859', 'i588', 'i1485', 'i4320', 'i1460', 'i3248', 'i821', 'i1668', 'i761', 'u7=1.74', 'i3270', 'i3278', 'i4488', 'i3494', 'i1068', 'u0=121', 'i1667', 'i1466', 'u2=70', 'i3504', 'u2=3', 'u2=39', 'u7=1.32', 'i1477', 'i3564', 'u2=89', 'i1476', 'i1506', 'i3296', 'i1917', 'i815', 'i1047', 'u7=1.09', 'i1629', 'i3360', 'i763', 'i1092', 'i890', 'i1059', 'i3290', 'i3284', 'i677', 'i1521', 'i674', 'i1073', 'i759', 'u2=35', 'i4294', 'i749', 'u7=0.89', 'i3086', 'u0=50', 'i1522', 'u2=56', 'u2=2', 'i4394', 'i3624', 'i3382', 'u2=34', 'i3078', 'u3=7', 'i1364', 'i1392', 'i1427', 'i1344', 'i3408', 'i2510', 'u0=24', 'i1058', 'i3440', 'u2=27', 'i2964', 'i3298', 'i747', 'i4512', 'i741', 'i756', 'i1332', 'u2=62', 'u0=158', 'u2=54', 'i3224', 'i1346', 'i739', 'i1297', 'u2=15', 'u4=0', 'i647', 'i675', 'i3286', 'i1465', 'i1328', 'i465', 'u2=23', 'u2=31', 'i1262', 'i2058', 'u7=2.24', 'i758', 'i4270', 'i1474', 'i825', 'i738', 'i3358', 'i740', 'i1360', 'i827', 'i3288', 'i536', 'i3258', 'i683', 'i1513', 'i829', 'i1347', 'i771', 'i2552', 'i2654', 'u7=1.69', 'i833', 'i4364', 'i4300', 'i1652', 'u2=93', 'i1342', 'i754', 'u2=71', 'i2586', 'i1070', 'i4366', 'i3276', 'i1540', 'i3626', 'i2592', 'i1280', 'u0=124', 'i691', 'i1361', 'u0=120', 'u1=370', 'i3620', 'i1759', 'i752', 'i692', 'TARGET']]
+train, test = np.split(clients, [int(.9*len(clients))])
+
+test = test.dropna()
+train = train.dropna()
+
+class Net(nn.Module):
+    def __init__(self):
+        super(Net, self).__init__()
+        self.fc1 = nn.Linear(300, 100)
+        self.fc2 = nn.Linear(100, 50)
+        self.fc3 = nn.Linear(50, 2)
+
+    def forward(self, x):
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
+        return F.softmax(x, dim=0)
+
+model = Net()
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-6)
+criterion = torch.nn.MSELoss()
+for epoch in range(20):
+    train_data = train.sample(int(len(train) * 0.25))
+    arr_train_data = np.array(train_data)
+    
+    print('epoch #' + str(epoch) + ': 0%')
+    count_good = 0
+    model.train() 
+    ind = 0
+    progress = 25
+    for elem in arr_train_data:
+        ind += 1
+        if ind % int(len(arr_train_data) * 0.25) == 0:
+            print('epoch #' + str(epoch) + ': ' + str(progress) + '%')
+            progress += 25
+            print('\tPart Accuracy: ' + str(count_good/ ind) + '%')
+        copy_elem = elem[:-1]
+        answer_nn = model(torch.from_numpy(copy_elem.astype(np.float32)))
+        copy_result = np.array([0, 0])
+        value_result = (elem[-1] == '1')
+        copy_result[value_result] = 1
+        loss = criterion(answer_nn, torch.from_numpy(copy_result.astype(np.float32)))
+        value_answer = answer_nn.detach().numpy()[0]
+        if value_answer > 0.5:
+            count_good += 1
+        loss.backward()  # Derive gradients.
+        optimizer.step()  # Update parameters based on gradients.
+        optimizer.zero_grad()  # Clear gradients.
+        first_iter = 0
+    print('!!!Accuracy: ' + str(count_good/ ind))
+    torch.save(model.state_dict(), "base1/actual_model20epochs.h")
