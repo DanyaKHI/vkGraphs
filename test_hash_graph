@@ -1,0 +1,63 @@
+import math
+import random
+import numpy as np
+import torch.nn as nn
+import torch.nn.functional as F
+import pandas as pd
+import torch
+from sklearn import *
+from sklearn.preprocessing import MinMaxScaler
+
+file_clients = 0
+file_friends = 0
+scaler = MinMaxScaler()
+clients = pd.read_csv("COMPRESS_FEATURES.csv")
+friends = pd.read_csv("COMPRESS_MEAN_FRIENDS_FULL.csv")
+depend = pd.read_csv("GRAPH_DEPENDENCE.csv")
+alpha = pd.read_csv("alphaOfFriendsFULL.csv")
+
+clients_and_friends = clients.merge(friends,left_on = 'CLIENT_ID', right_on = 'CLIENT_ID', how="inner")
+clients_all_at = clients_and_friends.merge(depend,left_on = 'CLIENT_ID', right_on = 'CLIENT_ID', how="inner")
+clients_all_at = clients_all_at.merge(alpha,left_on = 'CLIENT_ID', right_on = 'CLIENT_ID', how="inner")
+clients_all_at[clients_all_at.columns.values[1:]] = scaler.fit_transform(clients_all_at[clients_all_at.columns.values[1:]])
+clients_all_at.head()
+
+labels = pd.read_csv("FINAL_TARGETS_DATES_TRAINTEST.tsv", delimiter='\t')
+labels_test = labels.loc[labels['TARGET'] == 'test']
+
+
+train = clients_all_at[clients_all_at.CLIENT_ID.isin(labels_test.CLIENT_ID)]
+train.pop('CLIENT_ID')
+
+train = train.dropna()
+
+class Net(nn.Module):
+    def __init__(self):
+        super(Net, self).__init__()
+        self.fc1 = nn.Linear(6, 10)
+        self.fc2 = nn.Linear(10, 10)
+        self.fc3 = nn.Linear(10, 2)
+
+    def forward(self, x):
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
+        return F.softmax(x, dim=0)
+
+model = Net()
+model.load_state_dict(torch.load("ACTUAL_MODEL.h"))
+
+train_sample = np.array(train)
+
+y_pred = []
+
+for elem in train_sample:
+    answer_nn = model(torch.from_numpy(elem.astype(np.float32)))
+    value_answer = answer_nn.detach().numpy()[1]
+    if value_answer >= 0.5:
+        y_pred.append(1)
+    else:
+        y_pred.append(0)
+
+df = pd.DataFrame({'CLIENT_ID': labels_test['CLIENT_ID'], 'TARGET': y_pred})
+df.to_csv('abobus.csv', index=False)
